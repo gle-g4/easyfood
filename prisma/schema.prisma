@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Restaurante cadastrado na plataforma.
+model Restaurant {
+  id       Int    @id @default(autoincrement())
+  name     String @db.VarChar(120)
+  category String @db.VarChar(60)
+  rating   Float  @default(0)
+
+  /// DIFERENCIAL: soft delete. Em vez de apagar a linha, marcamos como
+  /// inativa. Preserva histórico e permite desfazer a exclusão.
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+
+  /// DIFERENCIAL: campos de auditoria. Saber QUANDO um registro foi criado
+  /// ou alterado é requisito de praticamente qualquer sistema real, e é
+  /// muito caro adicionar depois que a tabela já tem dados.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Índices pensados a partir das consultas que a API realmente faz:
+  /// filtro por categoria, ordenação por nota e busca por nome.
+  @@index([active, category])
+  @@index([active, rating])
+  @@index([name])
+  @@map("restaurants")
+}
+
+/// Espelho local do usuário. A CREDENCIAL não mora aqui quando o provider
+/// é o Cognito — apenas a identidade necessária para relacionamentos.
+model User {
+  id Int @id @default(autoincrement())
+
+  /// ID do usuário no provedor de identidade (o "sub" do Cognito).
+  /// É o elo entre o token recebido e o registro local.
+  externalId String? @unique @db.VarChar(120)
+
+  email String @unique @db.VarChar(160)
+  name  String @db.VarChar(120)
+
+  /// Preenchido SOMENTE quando AUTH_PROVIDER=local (hash bcrypt).
+  /// Com Cognito permanece nulo: a senha nunca entra no nosso banco.
+  password String? @db.VarChar(120)
+
+  /// Qual provider autenticou este usuário ("cognito" | "local").
+  /// Permite convivência dos dois durante uma eventual migração.
+  authProvider String @default("local") @db.VarChar(20)
+
+  /// Papel padrão da aplicação. Com Cognito, os grupos do token têm
+  /// precedência — este campo é o fallback e a fonte para o modo local.
+  role String @default("customer") @db.VarChar(30)
+
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([externalId])
+  @@index([authProvider])
+  @@map("users")
+}
