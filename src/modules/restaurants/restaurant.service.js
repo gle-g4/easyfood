@@ -1,13 +1,9 @@
 const repository = require("./restaurant.repository");
 const { notFound, conflict } = require("../../shared/errors/AppError");
 const logger = require("../../shared/logger");
-
-/**
- * RESTAURANT SERVICE
- *
- * Nenhum import do Prisma aqui — só do Repository. O Service passa a
- * conter de fato REGRAS, e não montagem de query.
- */
+const { env } = require("../../config/env");
+const emailService = require("../shared/email.service");
+const imageService = require("../shared/image.service");
 
 async function listar(filtros) {
   const { pagina, limite } = filtros;
@@ -15,13 +11,6 @@ async function listar(filtros) {
 
   const totalPaginas = Math.ceil(total / limite) || 1;
 
-  /**
-   * DIFERENCIAL: resposta paginada com metadados.
-   *
-   * A versão da aula devolve um array cru. Isso quebra no dia em que
-   * existirem 50 mil restaurantes: a API tenta serializar tudo de uma vez.
-   * Aqui o cliente recebe os dados e sabe navegar entre as páginas.
-   */
   return {
     dados: itens,
     paginacao: {
@@ -45,9 +34,54 @@ async function buscarPorId(id) {
   return restaurante;
 }
 
+async function notificarCadastro(restaurante, autor) {
+  const destinoBoasVindas = env.email.testTo || autor?.email;
+  const destinoComercial = env.email.commercialTo || env.email.testTo;
+
+  const nome = emailService.escapeHtml(restaurante.name);
+  const categoria = emailService.escapeHtml(restaurante.category);
+
+  try {
+    await emailService.sendEmail({
+      to: destinoBoasVindas,
+      toName: restaurante.name,
+      subject: `Bem-vindo à EasyFood, ${restaurante.name}!`,
+      header: `Olá, ${restaurante.name}!`,
+      body: `
+        Seu restaurante foi cadastrado com sucesso na EasyFood.<br/>
+        Categoria: ${categoria}.
+      `,
+      footer: "Equipe EasyFood"
+    });
+  } catch (error) {
+    logger.error("Erro ao enviar e-mail de boas-vindas", {
+      restauranteId: restaurante.id,
+      erro: error.message
+    });
+  }
+
+  try {
+    await emailService.sendEmail({
+      to: destinoComercial,
+      toName: "Comercial EasyFood",
+      subject: `Novo restaurante cadastrado: ${restaurante.name}`,
+      header: "Novo restaurante na plataforma",
+      body: `
+        Nome: ${nome}<br/>
+        Categoria: ${categoria}<br/>
+        Avaliação: ${emailService.escapeHtml(restaurante.rating)}
+      `,
+      footer: "Notificação automática - EasyFood"
+    });
+  } catch (error) {
+    logger.error("Erro ao notificar o comercial", {
+      restauranteId: restaurante.id,
+      erro: error.message
+    });
+  }
+}
+
 async function criar(dados, autor) {
-  // REGRA DE NEGÓCIO: não permitir dois restaurantes com o mesmo nome.
-  // Isto é decisão de produto, não detalhe de banco — por isso vive aqui.
   const jaExiste = await repository.buscarPorNome(dados.name);
 
   if (jaExiste) {
@@ -61,11 +95,13 @@ async function criar(dados, autor) {
     criadoPor: autor?.email || "anônimo"
   });
 
+  void notificarCadastro(criado, autor);
+
   return criado;
 }
 
 async function atualizar(id, dados, autor) {
-  await buscarPorId(id); // garante existência (lança 404 se não houver)
+  await buscarPorId(id);
 
   if (dados.name) {
     const homonimo = await repository.buscarPorNome(dados.name);
@@ -97,4 +133,14 @@ async function desativar(id, autor) {
   return desativado;
 }
 
-module.exports = { listar, buscarPorId, criar, atualizar, desativar };
+async function enviarImagem(id, arquivo) {
+  const restaurante = await buscarPorId(id);
+  return imageService.trocarImagem({
+    buffer: arquivo.buffer,
+    imagemAtual: restaurante.imageUrl,
+    persistir: (url) => repository.definirImagem(id, { imageUrl: url })
+  });
+}
+
+module.exports = {
+  enviarImagem, listar, buscarPorId, criar, atualizar, desativar };

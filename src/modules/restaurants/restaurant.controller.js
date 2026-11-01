@@ -2,7 +2,6 @@ const service = require("./restaurant.service");
 const asyncHandler = require("../../shared/http/asyncHandler");
 
 const list = asyncHandler(async (req, res) => {
-  // `validatedQuery` é preenchido pelo middleware validate.
   const resultado = await service.listar(req.validatedQuery);
   res.status(200).json(resultado);
 });
@@ -15,8 +14,6 @@ const getById = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => {
   const criado = await service.criar(req.body, req.user);
 
-  // DIFERENCIAL: header Location apontando para o recurso criado.
-  // É o que a especificação HTTP manda em um 201 — muita API ignora.
   res
     .status(201)
     .location(`/restaurants/${criado.id}`)
@@ -34,7 +31,13 @@ const update = asyncHandler(async (req, res) => {
 
 const remove = asyncHandler(async (req, res) => {
   await service.desativar(Number(req.params.id), req.user);
-  res.status(204).send(); // 204: sucesso sem corpo de resposta
+  res.status(204).send();
 });
 
-module.exports = { list, getById, create, update, remove };
+const uploadImage = asyncHandler(async (req, res) => {
+  const atualizado = await service.enviarImagem(Number(req.params.id), req.file);
+  res.status(200).json(atualizado);
+});
+
+module.exports = {
+  uploadImage, list, getById, create, update, remove };

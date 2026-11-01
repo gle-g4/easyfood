@@ -1,14 +1,5 @@
 require("dotenv").config();
 
-/**
- * Configuração centralizada.
- *
- * DIFERENCIAL: em vez de espalhar `process.env.X` por todo o código,
- * as variáveis são lidas e VALIDADAS em um único ponto, na subida da
- * aplicação. Se faltar algo essencial, o processo falha imediatamente
- * (fail-fast) em vez de quebrar só quando alguém chamar o endpoint.
- */
-
 function required(key) {
   const value = process.env[key];
   if (!value || value.trim() === "") {
@@ -38,14 +29,24 @@ const env = {
   port: Number(optional("PORT", "3000")),
   databaseUrl: required("DATABASE_URL"),
 
-  // Lista de origens liberadas no CORS, separadas por vírgula.
-  // Vazio = libera todas (aceitável só em desenvolvimento).
   corsOrigins: optional("CORS_ORIGINS", "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean),
 
-  // Limites de requisição, ajustáveis sem tocar no código.
+  email: {
+    provider: optional(
+      "EMAIL_PROVIDER",
+      optional("EMAIL_API_KEY", null) ? "resend" : "console"
+    ).toLowerCase(),
+    apiKey: optional("EMAIL_API_KEY", null),
+    from: optional("EMAIL_FROM", "onboarding@resend.dev"),
+    fromName: optional("EMAIL_FROM_NAME", "EasyFood"),
+    testTo: optional("EMAIL_TO_TEST", null),
+    commercialTo: optional("EMAIL_TO_COMMERCIAL", null),
+    simulateFailure: optional("EMAIL_SIMULATE_FAILURE", "false") === "true"
+  },
+
   rateLimit: {
     janelaMs: Number(optional("RATE_LIMIT_WINDOW_MS", "60000")),
     login: Number(optional("RATE_LIMIT_LOGIN", "5")),
@@ -55,11 +56,9 @@ const env = {
   auth: {
     provider: AUTH_PROVIDER,
 
-    // Usado apenas quando AUTH_PROVIDER=local
     jwtSecret: optional("JWT_SECRET", "dev-secret-trocar-em-producao"),
     jwtExpiresIn: optional("JWT_EXPIRES_IN", "1d"),
 
-    // Usado apenas quando AUTH_PROVIDER=cognito
     cognito: {
       region: optional("COGNITO_REGION", "us-east-1"),
       userPoolId: optional("COGNITO_USER_POOL_ID", null),
@@ -69,13 +68,22 @@ const env = {
   }
 };
 
-// Validação condicional: só exige credenciais do Cognito se ele for o provider ativo.
 if (env.auth.provider === "cognito") {
   if (!env.auth.cognito.userPoolId || !env.auth.cognito.clientId) {
     throw new Error(
       "AUTH_PROVIDER=cognito exige COGNITO_USER_POOL_ID e COGNITO_CLIENT_ID no .env"
     );
   }
+}
+
+if (!["resend", "console"].includes(env.email.provider)) {
+  throw new Error(
+    `EMAIL_PROVIDER inválido: "${env.email.provider}". Use "resend" ou "console".`
+  );
+}
+
+if (env.email.provider === "resend" && !env.email.apiKey) {
+  throw new Error("EMAIL_PROVIDER=resend exige EMAIL_API_KEY no .env");
 }
 
 const isProduction = env.nodeEnv === "production";

@@ -2,18 +2,6 @@ const { AppError } = require("../errors/AppError");
 const { isProduction } = require("../../config/env");
 const logger = require("../logger");
 
-/**
- * DIFERENCIAL: um único ponto de tratamento de erro para toda a API.
- *
- * Sem isso, cada controller repete o mesmo try/catch com
- * `res.status(500).json({ error: "Erro interno do servidor" })`.
- * Isso é duplicação e, pior, cada desenvolvedor acaba formatando o erro
- * de um jeito — o front nunca sabe o que esperar.
- *
- * Aqui todo erro vira a MESMA estrutura de resposta, sempre.
- */
-
-// Rota inexistente: também vira erro, tratado pelo mesmo fluxo.
 function notFoundHandler(req, _res, next) {
   next(
     new AppError(
@@ -24,7 +12,6 @@ function notFoundHandler(req, _res, next) {
   );
 }
 
-// Traduz erros conhecidos do Prisma para erros de domínio.
 function translatePrismaError(error) {
   if (error.code === "P2002") {
     const campo = error.meta?.target?.join(", ") || "campo único";
@@ -47,8 +34,6 @@ function translatePrismaError(error) {
   return null;
 }
 
-// O Express identifica o error handler pela assinatura de 4 argumentos.
-// eslint-disable-next-line no-unused-vars
 function errorHandler(error, req, res, _next) {
   let appError = error;
 
@@ -67,7 +52,6 @@ function errorHandler(error, req, res, _next) {
   };
 
   if (appError.statusCode >= 500) {
-    // Erro inesperado: registra o stack completo para investigação.
     logger.error(error.message, { ...logMeta, stack: error.stack });
   } else {
     logger.warn(appError.message, logMeta);
@@ -85,7 +69,6 @@ function errorHandler(error, req, res, _next) {
     body.error.details = appError.details;
   }
 
-  // Em dev, devolve o stack para facilitar o debug. Em produção, nunca.
   if (!isProduction && appError.statusCode >= 500) {
     body.error.stack = error.stack;
   }

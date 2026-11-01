@@ -1,23 +1,9 @@
 const { tooManyRequests } = require("../errors/AppError");
 const logger = require("../logger");
 
-/**
- * DIFERENCIAL: proteção contra força bruta nas rotas de login.
- *
- * Um endpoint de login sem limite permite que alguém teste milhares de
- * senhas por minuto. Este middleware limita tentativas por IP em uma
- * janela de tempo.
- *
- * Implementação em memória, de propósito: como a EasyFood ainda roda em
- * uma instância só (monólito, ADR-003), não vale adicionar Redis agora.
- * O TRADE-OFF está documentado: ao escalar horizontalmente, cada instância
- * terá seu próprio contador, e será hora de migrar para um store
- * compartilhado. Está isolado aqui justamente para essa troca ser barata.
- */
 function createRateLimiter({ windowMs = 60_000, max = 5, name = "default" } = {}) {
   const hits = new Map();
 
-  // Limpeza periódica para a memória não crescer sem limite.
   const cleanup = setInterval(() => {
     const now = Date.now();
     for (const [key, entry] of hits.entries()) {
@@ -25,7 +11,6 @@ function createRateLimiter({ windowMs = 60_000, max = 5, name = "default" } = {}
     }
   }, windowMs);
 
-  // Não segura o processo vivo só por causa do timer.
   if (cleanup.unref) cleanup.unref();
 
   return function rateLimit(req, res, next) {

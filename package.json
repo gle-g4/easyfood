@@ -1,7 +1,7 @@
 {
   "name": "easy-food",
-  "version": "2.0.0",
-  "description": "EasyFood API — monólito modular em camadas com autenticação plugável (AWS Cognito / JWT local)",
+  "version": "2.1.0",
+  "description": "EasyFood API — monólito modular em camadas, com autenticação plugável, serviço de e-mail compartilhado e função serverless de imagens",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,7 +9,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "smoke": "node scripts/smoke-test.js"
+    "smoke": "node scripts/smoke-test.js",
+    "image:local": "node scripts/optimize-image-local.js",
+    "image:test": "node scripts/image-test.js",
+    "test": "npm run smoke && npm run image:test"
   },
   "keywords": [
     "express",
@@ -28,6 +31,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.5.0",
+    "sharp": "^0.35.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

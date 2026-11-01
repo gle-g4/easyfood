@@ -1,19 +1,8 @@
-const { isProduction } = require("../config/env");
+const isProduction = process.env.NODE_ENV === "production";
 
-/**
- * DIFERENCIAL: log estruturado em vez de console.log solto.
- *
- * Em produção, sai como JSON em uma linha — formato que ferramentas de
- * observabilidade (CloudWatch, Datadog, Grafana Loki) conseguem indexar.
- * Em desenvolvimento, sai legível para humanos.
- *
- * Nenhuma dependência externa: evita inchar o projeto só para logar.
- */
-
-const LEVELS = { debug: 10, info: 20, warn: 30, error: 40 };
+const LEVELS = { debug: 10, info: 20, warn: 30, error: 40, silent: 100 };
 const MIN_LEVEL = LEVELS[process.env.LOG_LEVEL] || LEVELS.info;
 
-// Campos que NUNCA devem aparecer em log.
 const REDACTED_KEYS = [
   "password",
   "senha",

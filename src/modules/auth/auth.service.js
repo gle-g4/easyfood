@@ -1,34 +1,10 @@
 const authProvider = require("./providers");
 const prisma = require("../../database/prisma");
 const logger = require("../../shared/logger");
-
-/**
- * AUTH SERVICE
- * ============
- *
- * Repare no que este arquivo NÃO tem: nenhum `jwt.sign`, nenhum SDK da AWS,
- * nenhum `req`/`res`. Ele orquestra regras de negócio e delega a
- * autenticação ao provider configurado.
- *
- * DIFERENCIAL: ESPELHO LOCAL DO USUÁRIO (shadow user)
- * ---------------------------------------------------
- * Mesmo usando Cognito, guardamos um registro local mínimo do usuário
- * (id externo, e-mail, nome, papel). Motivos:
- *
- *  1. RELACIONAMENTO — um Pedido precisa de uma foreign key para um usuário
- *     que existe no NOSSO banco. Não dá para criar FK para um ID que só
- *     existe na AWS.
- *  2. CONSULTA BARATA — listar "pedidos com nome do cliente" não pode
- *     depender de N chamadas à API da AWS.
- *  3. PORTABILIDADE — se um dia trocarmos de provedor, a base de usuários
- *     e seus vínculos continuam nossos.
- *
- * O que NÃO fica no espelho: senha. Nunca. Com Cognito, a coluna `password`
- * fica nula — a credencial vive só no provedor de identidade.
- */
+const imageService = require("../shared/image.service");
+const { notFound } = require("../../shared/errors/AppError");
 
 async function sincronizarUsuarioLocal({ externalId, email, name, provider }) {
-  // upsert: cria se for o primeiro acesso, atualiza se já existir.
   return prisma.user.upsert({
     where: { email },
     update: {
@@ -50,6 +26,7 @@ async function sincronizarUsuarioLocal({ externalId, email, name, provider }) {
       email: true,
       name: true,
       role: true,
+      imageUrl: true,
       createdAt: true
     }
   });
@@ -83,8 +60,6 @@ async function register({ name, email, password }) {
 async function login({ email, password }) {
   const tokens = await authProvider.login({ email, password });
 
-  // Lê a identidade a partir do próprio token emitido — funciona igual
-  // para Cognito e local, sem o Service precisar saber a diferença.
   const identidade = await authProvider.verifyToken(tokens.accessToken);
 
   const usuario = await sincronizarUsuarioLocal({
@@ -154,13 +129,30 @@ async function perfil(externalId) {
       name: true,
       role: true,
       emailVerified: true,
+      imageUrl: true,
       createdAt: true,
       lastLoginAt: true
     }
   });
 }
 
+async function atualizarImagemPerfil(externalId, arquivo) {
+  const usuario = await prisma.user.findFirst({ where: { externalId } });
+  if (!usuario) throw notFound("Usuário não encontrado.");
+  return imageService.trocarImagem({
+    buffer: arquivo.buffer,
+    imagemAtual: usuario.imageUrl,
+    persistir: (url) =>
+      prisma.user.update({
+        where: { id: usuario.id },
+        data: { imageUrl: url },
+        select: { id: true, email: true, name: true, role: true, imageUrl: true }
+      })
+  });
+}
+
 module.exports = {
+  atualizarImagemPerfil,
   register,
   login,
   confirmarCadastro,

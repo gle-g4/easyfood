@@ -9,26 +9,6 @@ const {
 } = require("../../../shared/errors/AppError");
 const { naoSuportado } = require("./auth.provider");
 
-/**
- * PROVIDER: LOCAL (JWT + bcrypt)
- * ==============================
- *
- * Existe por uma razão prática, não por indecisão:
- *
- *  1. DESENVOLVIMENTO SEM AWS — qualquer pessoa clona o repositório e roda
- *     a API sem precisar de conta AWS, User Pool ou credenciais. Isso
- *     derruba a barreira de entrada do projeto a quase zero.
- *  2. TESTES AUTOMATIZADOS — testes não podem depender de um serviço externo
- *     pago e com rate limit.
- *  3. PROVA DO CONTRATO — ter duas implementações reais é o que garante que
- *     a abstração do provider é honesta. Abstração com um único caso
- *     costuma ser abstração errada.
- *
- * Em produção, AUTH_PROVIDER=cognito. Este provider é ferramenta de
- * desenvolvimento, e o config/env.js impede que o segredo padrão vá para
- * produção por descuido.
- */
-
 const ROUNDS_BCRYPT = 10;
 
 const localProvider = {
@@ -56,15 +36,13 @@ const localProvider = {
       id: String(usuario.id),
       email: usuario.email,
       name: usuario.name,
-      confirmado: true // sem verificação de e-mail no modo local
+      confirmado: true
     };
   },
 
   async login({ email, password }) {
     const usuario = await prisma.user.findUnique({ where: { email } });
 
-    // Mensagem idêntica para "usuário não existe" e "senha errada":
-    // não entregamos a um atacante a informação de quais e-mails existem.
     const generico = unauthorized("E-mail ou senha inválidos.");
 
     if (!usuario || !usuario.password) throw generico;
@@ -109,12 +87,6 @@ const localProvider = {
     }
   },
 
-  /**
-   * Assumido explicitamente como limitação. JWT local puro é stateless:
-   * sem uma lista de revogação, não há como invalidar um token antes de
-   * ele expirar. Essa é justamente uma das razões da escolha do Cognito
-   * para produção — lá o logout global existe de verdade.
-   */
   async refresh() {
     throw naoSuportado("local", "refresh");
   },

@@ -30,18 +30,12 @@ const criarRestauranteSchema = z.object({
     .default(0)
 });
 
-// Em atualização, todos os campos são opcionais, mas ao menos um é exigido.
 const atualizarRestauranteSchema = criarRestauranteSchema
   .partial()
   .refine((dados) => Object.keys(dados).length > 0, {
     message: "Envie ao menos um campo para atualizar"
   });
 
-/**
- * Query string chega sempre como texto; o `coerce` converte para número
- * e aplica os limites. Note o teto de 100 em `limite`: sem isso, alguém
- * pede ?limite=999999 e derruba o banco.
- */
 const listarQuerySchema = z.object({
   pagina: z.coerce.number().int().min(1).default(1),
   limite: z.coerce.number().int().min(1).max(100).default(10),

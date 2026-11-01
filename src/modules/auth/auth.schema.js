@@ -1,13 +1,5 @@
 const { z } = require("zod");
 
-/**
- * Contratos de entrada da API, declarados uma única vez.
- *
- * A política de senha aqui espelha de propósito a política padrão do
- * Cognito. Assim o usuário recebe um erro 400 claro da NOSSA API antes de
- * a requisição sair para a AWS — feedback mais rápido e uma chamada a menos.
- */
-
 const senhaForte = z
   .string()
   .min(8, "A senha deve ter ao menos 8 caracteres")

@@ -19,45 +19,16 @@ const {
 } = require("../../../shared/errors/AppError");
 const logger = require("../../../shared/logger");
 
-/**
- * PROVIDER: AWS COGNITO
- * =====================
- *
- * Por que Cognito (ver docs/ADR-004-autenticacao.md):
- *  - A EasyFood não quer ser dona do problema "guardar senha com segurança".
- *    Hash, salt, política de senha, rotação, MFA e recuperação de conta são
- *    problemas resolvidos — e caros de errar.
- *  - Nosso banco NUNCA armazena senha. Isso reduz drasticamente o impacto
- *    de um vazamento do PostgreSQL.
- *  - MFA, login social e fluxo de "esqueci minha senha" ficam disponíveis
- *    por configuração, sem código novo.
- *
- * DIFERENCIAL TÉCNICO IMPORTANTE:
- * A validação do token é feita LOCALMENTE via JWKS (aws-jwt-verify), e não
- * chamando a AWS a cada requisição. O Cognito publica suas chaves públicas;
- * a biblioteca baixa e cacheia essas chaves e verifica a assinatura em
- * memória. Isso significa:
- *   - zero latência de rede por requisição autenticada;
- *   - a API continua validando tokens mesmo em instabilidade da AWS;
- *   - sem custo por chamada de verificação.
- */
-
 const { region, userPoolId, clientId, clientSecret } = env.auth.cognito;
 
 const client = new CognitoIdentityProviderClient({ region });
 
-// O verificador é criado uma única vez e reaproveitado (cacheia o JWKS).
 const verifier = CognitoJwtVerifier.create({
   userPoolId,
   clientId,
   tokenUse: "access"
 });
 
-/**
- * Quando o App Client do Cognito é criado COM secret, toda chamada precisa
- * de um SECRET_HASH = HMAC-SHA256(username + clientId, clientSecret).
- * Muita gente trava aqui; por isso está encapsulado e é opcional.
- */
 function secretHash(username) {
   if (!clientSecret) return undefined;
   return crypto
@@ -71,10 +42,6 @@ function comSecret(params, username) {
   return hash ? { ...params, SecretHash: hash } : params;
 }
 
-/**
- * Traduz os erros da AWS para os erros de domínio da EasyFood.
- * Assim o resto da aplicação nunca precisa conhecer nomes de erro da AWS.
- */
 function traduzirErro(error) {
   const nome = error.name || error.__type;
 
@@ -101,7 +68,6 @@ function traduzirErro(error) {
 
   if (mapa[nome]) return mapa[nome];
 
-  // Erro desconhecido: loga o detalhe, mas não vaza para o cliente.
   logger.error("erro não mapeado do Cognito", {
     cognitoError: nome,
     detalhe: error.message
@@ -140,8 +106,6 @@ const cognitoProvider = {
         id: resposta.UserSub,
         email,
         name,
-        // Se o pool exige verificação de e-mail, vem false e o usuário
-        // precisa confirmar com o código antes de conseguir logar.
         confirmado: Boolean(resposta.UserConfirmed)
       };
     } catch (error) {
@@ -149,11 +113,6 @@ const cognitoProvider = {
     }
   },
 
-  /**
-   * Fluxo extra que o provider local não tem: confirmação de conta por
-   * código enviado ao e-mail. Mostra que providers podem ter capacidades
-   * próprias além do contrato mínimo.
-   */
   async confirmarCadastro({ email, codigo }) {
     try {
       await client.send(
@@ -203,7 +162,6 @@ const cognitoProvider = {
       const r = resposta.AuthenticationResult;
 
       if (!r) {
-        // Acontece quando o Cognito exige um desafio (MFA, troca de senha).
         throw new AppError(
           `Autenticação exige etapa adicional: ${resposta.ChallengeName}`,
           403,
@@ -224,9 +182,6 @@ const cognitoProvider = {
     }
   },
 
-  /**
-   * Verificação 100% local via JWKS — sem chamada de rede por requisição.
-   */
   async verifyToken(token) {
     try {
       const payload = await verifier.verify(token);
@@ -235,7 +190,6 @@ const cognitoProvider = {
         sub: payload.sub,
         email: payload.email || payload.username,
         name: payload.name,
-        // Grupos do Cognito viram os papéis (roles) da aplicação.
         grupos: payload["cognito:groups"] || [],
         provider: "cognito"
       };
@@ -267,9 +221,6 @@ const cognitoProvider = {
     }
   },
 
-  /**
-   * Revogação real de sessão — algo que JWT local puro não consegue fazer.
-   */
   async logout({ accessToken }) {
     try {
       await client.send(

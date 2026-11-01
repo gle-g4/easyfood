@@ -250,6 +250,37 @@ continuam montados por compatibilidade.
 a paginação da seção 3.7. Com versão no caminho, `/v1` segue atendendo clientes
 antigos enquanto `/v2` evolui. Sem versão, toda mudança é uma quebra.
 
+### 3.12 Serviço de e-mail compartilhado e ação secundária
+
+`src/modules/shared/email.service.js` expõe uma única função, `sendEmail()`.
+O módulo de restaurantes **cria restaurantes**; o e-mail **envia e-mails**. A
+chamada ao provedor (Resend) fica confinada em `transportar()`, e o cadastro
+grava no banco **antes** de qualquer e-mail: a falha do provedor nunca desfaz
+nem impede a operação principal. O envio não usa `await` — a resposta não espera
+o provedor. Dados de usuário são escapados antes de entrar no HTML do e-mail.
+Detalhes e trade-offs no [ADR-005](./ADR-005-servico-de-email.md).
+
+**Trade-off:** sem fila, um e-mail que falha é perdido (fica só no log).
+
+### 3.13 Função serverless para imagens (monólito + FaaS)
+
+O processamento de imagem é trabalho de CPU/memória e não deve competir com as
+requisições da API. A EasyFood continua um monólito modular e ganha uma
+**função independente** (`src/functions/optimizeImage`) pensada para rodar sob
+demanda, acionada por um evento de upload. A função é separada em duas camadas:
+`optimizeImage(buffer)` (pura) e `handler(event)` (adaptador FaaS) — em uma
+plataforma real só o handler muda.
+
+Há também um **simulador de plataforma** (`src/shared/serverless/simulator.js`)
+que reproduz cold start, warm start, limite de concorrência e timeout, para que
+os trade-offs sejam observados e não só lidos (`npm run image:local`).
+
+**Trade-offs:** cold start, limites de execução, resultado assíncrono e
+dependência de provedor. A escolha depende do cenário (volume, picos, exigência
+de resposta imediata). Análise completa no
+[ADR-006](./ADR-006-processamento-de-imagens.md) e conceitos em
+[SERVERLESS.md](./SERVERLESS.md).
+
 ---
 
 ## 4. Segurança — decisões pontuais
@@ -264,6 +295,9 @@ antigos enquanto `/v2` evolui. Sem versão, toda mudança é uma quebra.
 | Erro de login genérico | "E-mail ou senha inválidos" não revela quais e-mails existem |
 | Stack trace só em dev | Stack em produção entrega estrutura interna a um atacante |
 | Campos sensíveis mascarados no log | Impede o vazamento clássico via arquivo de log |
+| `escapeHtml` em dados de usuário no e-mail | Impede HTML injection/phishing com a marca da EasyFood |
+| Imagem validada pelo conteúdo, com teto de bytes e de pixels | Impede arquivo disfarçado e "image bomb" |
+| Metadados EXIF/GPS descartados na imagem otimizada | Foto de celular pode carregar a localização |
 | Política de senha espelhando o Cognito | Erro 400 rápido da nossa API, uma chamada a menos à AWS |
 
 ---
@@ -295,6 +329,8 @@ Documentar o que ficou de fora é tão importante quanto justificar o que entrou
 | ADR-002 | Persistência com PostgreSQL | Aceito |
 | ADR-003 | Arquitetura monolítica modular | Aceito |
 | [ADR-004](./ADR-004-autenticacao.md) | Cognito atrás de abstração de provider | Aceito |
+| [ADR-005](./ADR-005-servico-de-email.md) | Serviço de e-mail compartilhado, ação secundária | Aceito |
+| [ADR-006](./ADR-006-processamento-de-imagens.md) | Processamento de imagens em função serverless | Aceito |
 
 Como registrado na aula: uma decisão substituída **não estava errada** — o
 contexto mudou.

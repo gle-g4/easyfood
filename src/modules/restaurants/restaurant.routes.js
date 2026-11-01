@@ -2,6 +2,8 @@ const express = require("express");
 
 const controller = require("./restaurant.controller");
 const validate = require("../../shared/middlewares/validate");
+const { uploadImagem } = require("../shared/upload.middleware");
+const { nested: dishesDoRestaurante } = require("../dishes/dish.routes");
 const {
   authenticate,
   authorize,
@@ -16,18 +18,6 @@ const {
 
 const router = express.Router();
 
-/**
- * POLÍTICA DE ACESSO DESTE MÓDULO
- *
- * Leitura é pública: qualquer visitante pode ver os restaurantes — é o
- * produto da EasyFood. Escrita exige login, e as operações destrutivas
- * exigem papel administrativo (grupo no Cognito).
- *
- * Deixar isso explícito na rota é melhor do que esconder no controller:
- * lendo este arquivo você sabe, em 10 segundos, quem pode fazer o quê.
- */
-
-// LEITURA — pública (optionalAuth só enriquece o contexto, não bloqueia)
 router.get(
   "/",
   optionalAuth,
@@ -42,7 +32,6 @@ router.get(
   controller.getById
 );
 
-// ESCRITA — exige autenticação
 router.post(
   "/",
   authenticate,
@@ -58,7 +47,6 @@ router.patch(
   controller.update
 );
 
-// EXCLUSÃO — exige papel administrativo
 router.delete(
   "/:id",
   authenticate,
@@ -66,5 +54,9 @@ router.delete(
   validate(idParamSchema, "params"),
   controller.remove
 );
+
+router.use("/:restaurantId/dishes", dishesDoRestaurante);
+
+router.post("/:id/image", authenticate, validate(idParamSchema, "params"), uploadImagem, controller.uploadImage);
 
 module.exports = router;
