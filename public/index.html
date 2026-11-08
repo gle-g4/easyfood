@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EasyFood</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topo">
+  <a class="marca" href="#/">Easy<span>Food</span></a>
+  <nav>
+    <a href="#/" data-nav="home">Restaurantes</a>
+    <a href="#/perfil" data-nav="perfil">Meu perfil</a>
+  </nav>
+  <div id="auth-area"></div>
+</header>
+<main id="view" aria-live="polite"></main>
+<div id="toasts" role="status"></div>
+<dialog id="dialogo-auth">
+  <form id="form-auth" novalidate>
+    <h2 id="auth-titulo">Entrar</h2>
+    <label id="campo-nome" hidden>Nome<input name="name" autocomplete="name"></label>
+    <label>E-mail<input name="email" type="email" required autocomplete="email"></label>
+    <label>Senha<input name="password" type="password" required autocomplete="current-password"></label>
+    <p class="dica" id="auth-dica" hidden>Mínimo de 8 caracteres, com maiúscula, minúscula e número.</p>
+    <p class="erro" id="auth-erro" role="alert"></p>
+    <div class="acoes">
+      <button type="button" class="link" id="auth-alternar"></button>
+      <button type="button" class="sec" id="auth-cancelar">Cancelar</button>
+      <button type="submit" id="auth-enviar">Entrar</button>
+    </div>
+  </form>
+</dialog>
+<script src="/app.js"></script>
+</body>
+</html>

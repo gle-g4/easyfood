@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id       Int    @id @default(autoincrement())
+  name     String @db.VarChar(120)
+  category String @db.VarChar(60)
+  rating   Float  @default(0)
+
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+
+  imageUrl String? @db.VarChar(255)
+
+  dishes Dish[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, category])
+  @@index([active, rating])
+  @@index([name])
+  @@map("restaurants")
+}
+
+model User {
+  id Int @id @default(autoincrement())
+
+  externalId String? @unique @db.VarChar(120)
+
+  email String @unique @db.VarChar(160)
+  name  String @db.VarChar(120)
+
+  password String? @db.VarChar(120)
+
+  authProvider String @default("local") @db.VarChar(20)
+
+  role String @default("customer") @db.VarChar(30)
+
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+  imageUrl      String?   @db.VarChar(255)
+
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([externalId])
+  @@index([authProvider])
+  @@map("users")
+}
+
+model Dish {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(120)
+  description String? @db.VarChar(500)
+
+  price     Decimal @db.Decimal(10, 2)
+  available Boolean @default(true)
+
+  imageUrl String? @db.VarChar(255)
+
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@index([restaurantId, active])
+  @@map("dishes")
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EasyFood API</title>
+<style>
+  :root {
+    --bg: #0a1628;
+    --card: #12213d;
+    --line: #1f3557;
+    --text: #e8eef7;
+    --muted: #8fa3bf;
+    --accent: #8bc53f;
+    --blue: #3d9ae8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 3rem 1.25rem;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 2.25rem; margin: 0 0 .25rem; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 2.5rem; }
+  h2 {
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--blue); margin: 2rem 0 .75rem;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: .5rem 1rem; margin-bottom: .5rem;
+  }
+  .row {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .6rem 0; border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .row:last-child { border-bottom: 0; }
+  .m {
+    font: 600 .72rem/1 ui-monospace, monospace;
+    padding: .35rem .5rem; border-radius: 5px; min-width: 52px;
+    text-align: center; color: #0a1628;
+  }
+  .get { background: var(--accent); }
+  .post { background: var(--blue); }
+  .patch { background: #f2c14e; }
+  .del { background: #e8536b; color: #fff; }
+  code { font-family: ui-monospace, monospace; font-size: .9rem; }
+  .tag {
+    margin-left: auto; font-size: .7rem; color: var(--muted);
+    border: 1px solid var(--line); padding: .2rem .5rem; border-radius: 20px;
+  }
+  footer { margin-top: 2.5rem; color: var(--muted); font-size: .85rem; }
+  a { color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EasyFood <span>API</span></h1>
+  <p class="sub">Monólito modular · Express · Prisma · PostgreSQL · autenticação plugável</p>
+
+  <h2>Autenticação</h2>
+  <div class="card">
+    <div class="row"><span class="m post">POST</span><code>/api/v1/auth/register</code></div>
+    <div class="row"><span class="m post">POST</span><code>/api/v1/auth/login</code></div>
+    <div class="row"><span class="m post">POST</span><code>/api/v1/auth/confirm</code></div>
+    <div class="row"><span class="m post">POST</span><code>/api/v1/auth/refresh</code></div>
+    <div class="row"><span class="m post">POST</span><code>/api/v1/auth/logout</code><span class="tag">token</span></div>
+    <div class="row"><span class="m get">GET</span><code>/api/v1/auth/me</code><span class="tag">token</span></div>
+  </div>
+
+  <h2>Restaurantes</h2>
+  <div class="card">
+    <div class="row"><span class="m get">GET</span><code>/api/v1/restaurants</code><span class="tag">público</span></div>
+    <div class="row"><span class="m get">GET</span><code>/api/v1/restaurants/:id</code><span class="tag">público</span></div>
+    <div class="row"><span class="m post">POST</span><code>/api/v1/restaurants</code><span class="tag">token</span></div>
+    <div class="row"><span class="m patch">PATCH</span><code>/api/v1/restaurants/:id</code><span class="tag">token</span></div>
+    <div class="row"><span class="m del">DEL</span><code>/api/v1/restaurants/:id</code><span class="tag">admin</span></div>
+  </div>
+
+  <h2>Saúde</h2>
+  <div class="card">
+    <div class="row"><span class="m get">GET</span><code>/health/live</code></div>
+    <div class="row"><span class="m get">GET</span><code>/health/ready</code></div>
+  </div>
+
+  <footer>
+    Documentação de arquitetura em <code>docs/ARQUITETURA.md</code> ·
+    decisão de autenticação em <code>docs/ADR-004-autenticacao.md</code>
+  </footer>
+</div>
+</body>
+</html>
